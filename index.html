@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#050a0e" />
+  <meta name="description" content="vextags — Roblox environment builder and 3D modeller creating production-ready maps, worlds and game environments." />
+  <link rel="icon" type="image/jpeg" href="images/vextags-pfp.jpg" />
+  <link rel="shortcut icon" type="image/jpeg" href="images/vextags-pfp.jpg" />
+  <link rel="apple-touch-icon" href="images/vextags-pfp.jpg" />
+  <title>vextags — Roblox Environment Builder</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg:#050a0e;
+      --bg-2:#071119;
+      --panel:rgba(9,20,28,.76);
+      --panel-strong:rgba(8,18,25,.94);
+      --text:#effdff;
+      --muted:#8ca4ad;
+      --soft:#b8cbd1;
+      --line:rgba(97,239,255,.16);
+      --cyan:#4ef5ff;
+      --cyan-2:#00bfd0;
+      --lime:#b9ff5c;
+      --amber:#ffc35a;
+      --danger:#ff7368;
+      --shadow:0 28px 90px rgba(0,0,0,.42);
+      --radius:24px;
+      --sans:"Space Grotesk",system-ui,sans-serif;
+      --mono:"IBM Plex Mono",monospace;
+      --mx:50vw;
+      --my:30vh;
+    }
+
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth;background:var(--bg)}
+    body{
+      margin:0;
+      color:var(--text);
+      font-family:var(--sans);
+      background:
+        radial-gradient(70vw 55vw at 80% -10%,rgba(78,245,255,.12),transparent 66%),
+        radial-gradient(55vw 45vw at 10% 30%,rgba(185,255,92,.045),transparent 64%),
+        linear-gradient(180deg,#050a0e 0%,#071018 38%,#050a0e 100%);
+      overflow-x:hidden;
+    }
+    body::before{
+      content:"";position:fixed;inset:0;z-index:-4;pointer-events:none;
+      background-image:
+        linear-gradient(rgba(78,245,255,.025) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(78,245,255,.025) 1px,transparent 1px);
+      background-size:52px 52px;
+      mask-image:linear-gradient(to bottom,black 0%,rgba(0,0,0,.55) 58%,transparent 96%);
+      animation:gridDrift 20s linear infinite;
+    }
+    body::after{
+      content:"";position:fixed;width:520px;height:520px;border-radius:50%;z-index:-3;pointer-events:none;
+      left:var(--mx);top:var(--my);transform:translate(-50%,-50%);
+      background:radial-gradient(circle,rgba(78,245,255,.085),rgba(78,245,255,.025) 35%,transparent 70%);
+      filter:blur(4px);transition:left .18s ease-out,top .18s ease-out;
+    }
+    @keyframes gridDrift{to{background-position:52px 52px}}
+
+    a{color:inherit;text-decoration:none}
+    button,input{font:inherit}
+    button{color:inherit}
+    img{max-width:100%}
+    ::selection{background:rgba(78,245,255,.28);color:white}
+    .container{width:min(1220px,calc(100% - 48px));margin:auto}
+    .mono{font-family:var(--mono)}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+    #ambientCanvas{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:-2;opacity:.6}
+    .noise{position:fixed;inset:0;pointer-events:none;z-index:1000;opacity:.035;mix-blend-mode:screen;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.95' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E")}
+
+    .scroll-progress{position:fixed;top:0;left:0;right:0;height:2px;z-index:200;background:rgba(255,255,255,.03)}
+    .scroll-progress span{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--lime),var(--amber));box-shadow:0 0 18px var(--cyan);transition:width .08s linear}
+
+    /* Floating command bar */
+    .command-bar{
+      position:fixed;z-index:150;top:18px;left:50%;transform:translateX(-50%);
+      width:min(1180px,calc(100% - 28px));min-height:66px;
+      display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:20px;
+      padding:9px 11px 9px 13px;border:1px solid rgba(112,235,255,.18);border-radius:20px;
+      background:linear-gradient(180deg,rgba(7,17,24,.92),rgba(5,12,18,.82));
+      backdrop-filter:blur(24px) saturate(1.25);box-shadow:0 18px 65px rgba(0,0,0,.35),inset 0 1px rgba(255,255,255,.035);
+      transition:transform .35s ease,border-color .3s ease,box-shadow .3s ease;
+    }
+    .command-bar.scrolled{border-color:rgba(78,245,255,.28);box-shadow:0 18px 75px rgba(0,0,0,.5),0 0 35px rgba(78,245,255,.04)}
+    .identity{display:flex;align-items:center;gap:11px;min-width:0}
+    .identity-avatar{position:relative;width:44px;height:44px;flex:none;border-radius:13px;padding:2px;background:linear-gradient(135deg,var(--cyan),rgba(78,245,255,.12),var(--lime));box-shadow:0 0 24px rgba(78,245,255,.15)}
+    .identity-avatar img{width:100%;height:100%;object-fit:cover;border-radius:11px;background:#071119;display:block}
+    .identity-avatar::after{content:"";position:absolute;width:9px;height:9px;border-radius:50%;right:-1px;bottom:-1px;background:var(--lime);border:2px solid #071119;box-shadow:0 0 14px var(--lime)}
+    .identity-copy{min-width:0}
+    .identity-copy strong{display:block;font-size:14px;line-height:1.1;letter-spacing:-.02em}
+    .identity-copy span{display:block;margin-top:4px;font:9px var(--mono);letter-spacing:.1em;color:#6f8b94;white-space:nowrap}
+
+    .nav-links{display:flex;justify-content:center;gap:4px;min-width:0}
+    .nav-links a{position:relative;padding:10px 12px;border-radius:10px;font:10px var(--mono);letter-spacing:.09em;color:#89a2aa;transition:.25s ease;white-space:nowrap}
+    .nav-links a::after{content:"";position:absolute;left:12px;right:12px;bottom:5px;height:1px;background:var(--cyan);transform:scaleX(0);transition:transform .25s ease;box-shadow:0 0 10px var(--cyan)}
+    .nav-links a:hover,.nav-links a.active{color:#effdff;background:rgba(78,245,255,.055)}
+    .nav-links a.active::after,.nav-links a:hover::after{transform:scaleX(1)}
+
+    .bar-actions{display:flex;align-items:center;gap:8px}
+    .mini-button,.audio-toggle{border:1px solid var(--line);background:rgba(255,255,255,.025);border-radius:11px;min-height:40px;display:inline-flex;align-items:center;justify-content:center;transition:.25s ease;cursor:pointer}
+    .mini-button{padding:0 13px;font:10px var(--mono);letter-spacing:.08em}
+    .mini-button:hover,.audio-toggle:hover{border-color:rgba(78,245,255,.48);background:rgba(78,245,255,.07);transform:translateY(-2px);box-shadow:0 0 22px rgba(78,245,255,.08)}
+    .mini-button.primary{border-color:transparent;background:linear-gradient(100deg,var(--cyan),#65ffe8);color:#041014;font-weight:600;box-shadow:0 0 25px rgba(78,245,255,.14)}
+
+    .audio-control{display:flex;align-items:center;gap:7px;padding:4px 7px 4px 4px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.02)}
+    .audio-toggle{width:34px;min-height:34px;border:0;border-radius:9px;background:rgba(78,245,255,.07);padding:0}
+    .audio-icon{width:16px;height:16px;position:relative;display:flex;align-items:end;justify-content:center;gap:2px}
+    .audio-icon i{width:2px;border-radius:3px;background:var(--cyan);box-shadow:0 0 7px rgba(78,245,255,.5);animation:eq 1s ease-in-out infinite}
+    .audio-icon i:nth-child(1){height:7px}.audio-icon i:nth-child(2){height:13px;animation-delay:-.2s}.audio-icon i:nth-child(3){height:9px;animation-delay:-.4s}.audio-icon i:nth-child(4){height:5px;animation-delay:-.6s}
+    .audio-control.paused .audio-icon i{animation:none;height:3px;opacity:.5}
+    @keyframes eq{50%{height:4px}}
+    #volumeSlider{appearance:none;width:82px;height:3px;border-radius:99px;outline:0;background:linear-gradient(90deg,var(--cyan) var(--vol,71%),rgba(255,255,255,.11) var(--vol,71%));cursor:pointer}
+    #volumeSlider::-webkit-slider-thumb{appearance:none;width:12px;height:12px;border-radius:50%;background:#effdff;border:2px solid var(--cyan);box-shadow:0 0 10px var(--cyan)}
+    #volumeSlider::-moz-range-thumb{width:10px;height:10px;border-radius:50%;background:#effdff;border:2px solid var(--cyan);box-shadow:0 0 10px var(--cyan)}
+    .volume-readout{width:36px;text-align:right;font:9px var(--mono);color:#7e999f}
+
+    /* Right-side section rail */
+    .section-rail{position:fixed;right:18px;top:50%;transform:translateY(-50%);z-index:120;display:grid;gap:9px;padding:10px 7px;border:1px solid rgba(78,245,255,.1);border-radius:999px;background:rgba(5,12,18,.55);backdrop-filter:blur(12px)}
+    .section-rail a{width:7px;height:7px;border-radius:50%;background:#49616a;box-shadow:0 0 0 0 rgba(78,245,255,0);transition:.25s ease}
+    .section-rail a:hover,.section-rail a.active{background:var(--cyan);box-shadow:0 0 15px rgba(78,245,255,.75);transform:scale(1.3)}
+
+    /* Hero */
+    .hero{min-height:100vh;padding:150px 0 86px;position:relative;display:flex;align-items:center;overflow:hidden}
+    .hero::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 75% 45%,rgba(78,245,255,.08),transparent 28%),linear-gradient(115deg,transparent 50%,rgba(185,255,92,.018) 50% 51%,transparent 51%)}
+    .hero-grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(360px,.7fr);gap:64px;align-items:center}
+    .eyebrow{display:flex;align-items:center;gap:10px;color:var(--cyan);font:11px var(--mono);letter-spacing:.14em;text-transform:uppercase}
+    .eyebrow::before{content:"";width:26px;height:1px;background:var(--cyan);box-shadow:0 0 12px var(--cyan)}
+    .hero h1{font-size:clamp(56px,7.7vw,118px);line-height:.84;letter-spacing:-.075em;margin:22px 0 25px;max-width:900px}
+    .hero h1 .outline{color:transparent;-webkit-text-stroke:1px rgba(238,253,255,.68);position:relative}
+    .hero h1 .glow-word{position:relative;color:#eaffff;text-shadow:0 0 26px rgba(78,245,255,.16)}
+    .hero h1 .glow-word::after{content:"";position:absolute;left:4%;right:1%;bottom:-5px;height:5px;border-radius:99px;background:linear-gradient(90deg,var(--cyan),var(--lime),transparent);transform-origin:left;animation:linePulse 3.8s ease-in-out infinite;box-shadow:0 0 18px rgba(78,245,255,.35)}
+    @keyframes linePulse{0%,100%{transform:scaleX(.35);opacity:.45}50%{transform:scaleX(1);opacity:1}}
+    .hero-copy{font-size:17px;line-height:1.85;color:#97adb5;max-width:760px}
+    .hero-copy strong{color:#effdff;font-weight:600}
+    .hero-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
+    .cta{position:relative;min-height:50px;padding:0 19px;border:1px solid var(--line);border-radius:13px;display:inline-flex;align-items:center;gap:10px;justify-content:center;font:11px var(--mono);letter-spacing:.09em;overflow:hidden;transition:.28s ease}
+    .cta::before{content:"";position:absolute;inset:-1px;background:linear-gradient(110deg,transparent 25%,rgba(255,255,255,.28) 48%,transparent 70%);transform:translateX(-140%);transition:transform .7s ease}
+    .cta:hover::before{transform:translateX(140%)}
+    .cta:hover{transform:translateY(-3px);border-color:rgba(78,245,255,.45);box-shadow:0 16px 34px rgba(0,0,0,.3)}
+    .cta.primary{border-color:transparent;background:linear-gradient(100deg,var(--cyan),#63ffe7);color:#031014;font-weight:600;box-shadow:0 15px 45px rgba(78,245,255,.13)}
+
+    .proof-row{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:38px;max-width:790px}
+    .proof{padding:14px 13px;border:1px solid rgba(78,245,255,.12);border-radius:14px;background:rgba(255,255,255,.018);backdrop-filter:blur(8px);transition:.3s ease}
+    .proof:hover{border-color:rgba(78,245,255,.3);background:rgba(78,245,255,.035);transform:translateY(-3px)}
+    .proof b{display:block;font-size:20px;letter-spacing:-.04em}
+    .proof span{display:block;margin-top:4px;font:8px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:#6f8992}
+
+    .hero-visual{position:relative;min-height:560px;perspective:1000px}
+    .scene-card{position:absolute;inset:50px 0 50px 24px;border:1px solid rgba(78,245,255,.16);border-radius:30px;overflow:hidden;background:#071018;box-shadow:var(--shadow),0 0 70px rgba(78,245,255,.045);transform:rotateY(-5deg) rotateX(2deg);transition:transform .5s cubic-bezier(.2,.7,.2,1)}
+    .scene-card::before{content:"";position:absolute;inset:0;z-index:2;background:linear-gradient(180deg,rgba(4,10,15,.1),transparent 48%,rgba(4,9,14,.8)),linear-gradient(90deg,rgba(78,245,255,.08),transparent 30%);pointer-events:none}
+    .scene-card img{width:100%;height:100%;object-fit:cover;display:block;filter:saturate(.88) contrast(1.08) brightness(.78);transform:scale(1.03);transition:transform 1.1s cubic-bezier(.2,.7,.2,1),filter .5s ease}
+    .scene-card:hover img{transform:scale(1.075);filter:saturate(1.02) contrast(1.08) brightness(.86)}
+    .scene-hud{position:absolute;z-index:3;left:19px;right:19px;bottom:18px;display:flex;align-items:end;justify-content:space-between;gap:15px}
+    .scene-hud b{display:block;font-size:20px;letter-spacing:-.04em}.scene-hud span{font:9px var(--mono);letter-spacing:.1em;color:#93adb5}
+    .scene-index{font:10px var(--mono);color:var(--cyan);border:1px solid rgba(78,245,255,.25);padding:8px 9px;border-radius:9px;background:rgba(5,12,18,.65);backdrop-filter:blur(10px)}
+    .orbit{position:absolute;border:1px solid rgba(78,245,255,.18);border-radius:50%;pointer-events:none}
+    .orbit.one{width:160px;height:160px;right:-48px;top:3px;animation:orbit 11s linear infinite}
+    .orbit.two{width:96px;height:96px;left:-18px;bottom:5px;border-color:rgba(185,255,92,.16);animation:orbit 8s linear infinite reverse}
+    .orbit::after{content:"";position:absolute;width:8px;height:8px;border-radius:50%;background:var(--cyan);left:50%;top:-4px;box-shadow:0 0 16px var(--cyan)}
+    .orbit.two::after{background:var(--lime);box-shadow:0 0 16px var(--lime)}
+    @keyframes orbit{to{transform:rotate(360deg)}}
+    .float-label{position:absolute;z-index:4;padding:10px 12px;border:1px solid rgba(78,245,255,.16);border-radius:11px;background:rgba(6,14,20,.78);backdrop-filter:blur(13px);font:9px var(--mono);letter-spacing:.1em;color:#a7c0c7;box-shadow:0 12px 34px rgba(0,0,0,.3);animation:floatLabel 5s ease-in-out infinite}
+    .float-label.a{right:-25px;top:96px}.float-label.b{left:-22px;bottom:90px;animation-delay:-2s}
+    .float-label strong{color:var(--cyan)}
+    @keyframes floatLabel{50%{transform:translateY(-9px)}}
+
+    /* Generic sections */
+    section:not(.hero){position:relative;padding:112px 0}
+    section:not(.hero)::before{content:"";position:absolute;left:5%;right:5%;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(78,245,255,.16),transparent)}
+    .section-heading{display:grid;grid-template-columns:1fr minmax(260px,480px);gap:40px;align-items:end;margin-bottom:42px}
+    .section-heading h2{font-size:clamp(42px,5vw,72px);line-height:.92;letter-spacing:-.06em;margin:12px 0 0}
+    .section-heading p{margin:0;color:#7f969e;line-height:1.75;font-size:14px}
+    .panel{border:1px solid var(--line);border-radius:var(--radius);background:linear-gradient(145deg,rgba(10,22,30,.74),rgba(5,12,17,.78));box-shadow:var(--shadow);backdrop-filter:blur(12px)}
+    .reveal{opacity:0;transform:translateY(28px) scale(.985);filter:blur(4px);transition:opacity .8s ease,transform .85s cubic-bezier(.2,.75,.2,1),filter .8s ease}
+    .reveal.show{opacity:1;transform:none;filter:none}
+
+    /* About */
+    .about-layout{display:grid;grid-template-columns:1.15fr .85fr;gap:20px}
+    .about-copy{padding:36px;position:relative;overflow:hidden}
+    .about-copy::after{content:"";position:absolute;width:260px;height:260px;border-radius:50%;right:-140px;bottom:-150px;background:radial-gradient(circle,rgba(78,245,255,.1),transparent 70%)}
+    .about-copy p{margin:0 0 17px;line-height:1.9;color:#9eb1b7;font-size:15px}.about-copy p:last-child{margin-bottom:0}.about-copy strong{color:#effdff;font-weight:600}
+    .capability-panel{padding:28px;display:flex;flex-direction:column;gap:22px}
+    .capability-title{font:10px var(--mono);letter-spacing:.12em;color:#718a92;text-transform:uppercase}
+    .skill-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
+    .skill{padding:14px 12px;border-radius:13px;border:1px solid rgba(78,245,255,.11);background:rgba(255,255,255,.018);font:10px var(--mono);color:#b6c9ce;transition:.25s ease;position:relative;overflow:hidden}
+    .skill::after{content:"";position:absolute;left:0;bottom:0;width:0;height:1px;background:var(--cyan);transition:width .35s ease;box-shadow:0 0 10px var(--cyan)}
+    .skill:hover{transform:translateY(-3px);border-color:rgba(78,245,255,.3);color:white}.skill:hover::after{width:100%}
+    .timeline-mini{display:grid;gap:10px}
+    .timeline-item{display:grid;grid-template-columns:95px 1fr;gap:12px;padding-top:13px;border-top:1px solid rgba(78,245,255,.1)}
+    .timeline-item b{font:10px var(--mono);color:var(--cyan)}
+    .timeline-item span{font-size:12px;line-height:1.55;color:#8098a0}
+
+    /* Highlights */
+    .highlight-strip{display:grid;grid-template-columns:1.15fr .85fr .85fr;gap:14px;margin-top:20px}
+    .highlight{min-height:230px;padding:27px;position:relative;overflow:hidden;transition:.35s ease}
+    .highlight::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 90% 10%,var(--accentGlow,rgba(78,245,255,.12)),transparent 38%);pointer-events:none}
+    .highlight:hover{transform:translateY(-7px);border-color:rgba(78,245,255,.34);box-shadow:0 30px 80px rgba(0,0,0,.48),0 0 35px rgba(78,245,255,.035)}
+    .highlight-num{font:9px var(--mono);letter-spacing:.12em;color:#617c84}
+    .highlight h3{position:relative;margin:42px 0 10px;font-size:30px;letter-spacing:-.045em}
+    .highlight p{position:relative;margin:0;color:#879da4;line-height:1.65;font-size:13px}
+    .highlight .metric-tag{position:absolute;right:18px;top:17px;padding:7px 8px;border-radius:8px;border:1px solid rgba(78,245,255,.18);font:9px var(--mono);color:var(--cyan);background:rgba(5,13,18,.55)}
+
+    /* Work */
+    .project-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
+    .project-card{grid-column:span 6;min-height:410px;padding:18px;position:relative;overflow:hidden;transform-style:preserve-3d;transition:border-color .3s ease,box-shadow .3s ease,transform .18s ease}
+    .project-card.large{grid-column:span 8}.project-card.small{grid-column:span 4}
+    .project-card:hover{border-color:rgba(78,245,255,.34);box-shadow:0 34px 80px rgba(0,0,0,.46),0 0 35px rgba(78,245,255,.04)}
+    .project-media{height:205px;border-radius:17px;overflow:hidden;position:relative;background:linear-gradient(135deg,#0c2029,#061017);border:1px solid rgba(78,245,255,.1)}
+    .project-card.large .project-media{height:250px}.project-card.small .project-media{height:190px}
+    .project-media img{width:100%;height:100%;object-fit:cover;display:block;filter:saturate(.94) contrast(1.05);transition:transform .7s cubic-bezier(.2,.7,.2,1),filter .45s ease}
+    .project-card:hover .project-media img{transform:scale(1.065);filter:saturate(1.08) contrast(1.08)}
+    .project-media::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 45%,rgba(3,8,12,.72)),linear-gradient(90deg,rgba(78,245,255,.04),transparent 40%);pointer-events:none}
+    .project-status{position:absolute;z-index:2;top:12px;left:12px;padding:7px 9px;border-radius:8px;background:rgba(4,10,14,.72);backdrop-filter:blur(10px);border:1px solid rgba(78,245,255,.16);font:8px var(--mono);letter-spacing:.1em;color:#c8e5e9}
+    .project-body{padding:21px 7px 4px}
+    .project-kicker{font:9px var(--mono);letter-spacing:.1em;color:var(--cyan);text-transform:uppercase}
+    .project-body h3{font-size:28px;letter-spacing:-.04em;margin:9px 0 7px}
+    .project-body p{margin:0;color:#81989f;line-height:1.68;font-size:13px;max-width:660px}
+    .project-meta{display:flex;gap:7px;flex-wrap:wrap;margin-top:15px}
+    .project-meta span{padding:7px 8px;border-radius:7px;border:1px solid rgba(78,245,255,.1);background:rgba(255,255,255,.018);font:8px var(--mono);letter-spacing:.08em;color:#98b0b7}
+    .project-open{position:absolute;right:20px;bottom:20px;font:9px var(--mono);letter-spacing:.08em;color:#9eb8be;transition:.2s ease}.project-open:hover{color:var(--cyan);transform:translateX(3px)}
+
+    /* Process */
+    .process-layout{display:grid;grid-template-columns:.72fr 1.28fr;gap:18px}
+    .manifesto{padding:36px;min-height:430px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
+    .manifesto::before{content:"";position:absolute;width:320px;height:320px;border:1px solid rgba(78,245,255,.08);border-radius:50%;right:-150px;top:-120px;box-shadow:inset 0 0 70px rgba(78,245,255,.03)}
+    .manifesto .quote-mark{font-size:86px;line-height:.7;color:rgba(78,245,255,.42)}
+    .manifesto h3{font-size:42px;line-height:1.03;letter-spacing:-.055em;margin:35px 0;max-width:540px}
+    .manifesto small{font:9px var(--mono);letter-spacing:.1em;color:#667f87}
+    .process-list{padding:20px 32px}
+    .process-row{display:grid;grid-template-columns:64px 1fr auto;gap:16px;align-items:center;padding:24px 0;border-top:1px solid rgba(78,245,255,.11);transition:.25s ease}
+    .process-row:first-child{border-top:0}
+    .process-row:hover{transform:translateX(6px)}
+    .process-num{font:10px var(--mono);color:var(--cyan)}
+    .process-row h4{margin:0 0 5px;font-size:17px}.process-row p{margin:0;color:#7f969e;font-size:12px;line-height:1.55}
+    .process-arrow{color:#47616a;font-size:20px;transition:.25s ease}.process-row:hover .process-arrow{color:var(--cyan);transform:translateX(4px)}
+
+    /* Pricing */
+    .pricing-layout{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+    .price-card{padding:34px;position:relative;overflow:hidden}
+    .price-card::before{content:"";position:absolute;width:230px;height:230px;right:-100px;top:-100px;border-radius:50%;background:radial-gradient(circle,rgba(185,255,92,.1),transparent 70%)}
+    .price-label{font:10px var(--mono);letter-spacing:.11em;color:#718b92}
+    .price{font-size:76px;letter-spacing:-.07em;margin:8px 0 0;line-height:1}.price sup{font-size:.25em;color:var(--cyan);vertical-align:top;margin-left:6px}
+    .price-sub{font:10px var(--mono);letter-spacing:.09em;color:#6f878e;margin-top:11px}
+    .payment-lines{margin-top:28px;display:grid}
+    .payment-lines div{display:flex;justify-content:space-between;gap:16px;padding:14px 0;border-top:1px solid rgba(78,245,255,.1);font-size:12px;color:#849ba2}.payment-lines strong{color:#dff4f6;font-weight:500}
+    .policy-card{padding:34px}.policy-card h3{font-size:28px;letter-spacing:-.04em;margin:0 0 14px}.policy-card p{color:#8299a0;line-height:1.75;font-size:13px}.policy-card .policy-accent{color:#d7f8ff}
+
+    /* Static bento gallery */
+    .gallery-grid{display:grid;grid-template-columns:repeat(12,1fr);grid-auto-rows:145px;gap:12px}
+    .gallery-card{position:relative;overflow:hidden;border-radius:18px;border:1px solid rgba(78,245,255,.12);background:linear-gradient(135deg,#0d2028,#071116);cursor:zoom-in;min-width:0;transition:transform .4s cubic-bezier(.2,.7,.2,1),border-color .3s ease,box-shadow .4s ease;isolation:isolate}
+    .gallery-card:nth-child(1),.gallery-card:nth-child(7){grid-column:span 6;grid-row:span 3}
+    .gallery-card:nth-child(2),.gallery-card:nth-child(3),.gallery-card:nth-child(8),.gallery-card:nth-child(9){grid-column:span 3;grid-row:span 2}
+    .gallery-card:nth-child(4),.gallery-card:nth-child(5),.gallery-card:nth-child(6),.gallery-card:nth-child(10),.gallery-card:nth-child(11){grid-column:span 4;grid-row:span 2}
+    .gallery-card::before{content:"";position:absolute;inset:0;z-index:2;background:linear-gradient(180deg,transparent 50%,rgba(3,8,12,.55));opacity:.6;transition:opacity .35s ease}
+    .gallery-card::after{content:"VIEW";position:absolute;z-index:3;right:13px;bottom:12px;padding:7px 8px;border-radius:7px;border:1px solid rgba(78,245,255,.18);background:rgba(4,10,15,.62);backdrop-filter:blur(8px);font:8px var(--mono);letter-spacing:.12em;color:#b7d2d8;transform:translateY(7px);opacity:0;transition:.3s ease}
+    .gallery-card img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .75s cubic-bezier(.2,.7,.2,1),filter .45s ease;filter:saturate(.88) contrast(1.04)}
+    .gallery-card:hover{transform:translateY(-6px);border-color:rgba(78,245,255,.36);box-shadow:0 26px 60px rgba(0,0,0,.43),0 0 24px rgba(78,245,255,.04)}
+    .gallery-card:hover img{transform:scale(1.055);filter:saturate(1.08) contrast(1.07)}
+    .gallery-card:hover::after{opacity:1;transform:none}.gallery-card:hover::before{opacity:.25}
+    .gallery-fallback{position:absolute;inset:0;display:grid;place-items:center;font:10px var(--mono);letter-spacing:.1em;color:#4f6c75;background:radial-gradient(circle at 30% 30%,rgba(78,245,255,.08),transparent 40%),linear-gradient(135deg,#0c2028,#061017)}
+
+    .lightbox{position:fixed;inset:0;z-index:500;background:rgba(2,6,9,.88);backdrop-filter:blur(16px);display:flex;align-items:center;justify-content:center;padding:28px;opacity:0;visibility:hidden;transition:.28s ease}
+    .lightbox.open{opacity:1;visibility:visible}
+    .lightbox img{max-width:min(1500px,94vw);max-height:88vh;border-radius:18px;border:1px solid rgba(78,245,255,.2);box-shadow:0 30px 100px rgba(0,0,0,.7);transform:scale(.96);transition:transform .32s ease}.lightbox.open img{transform:scale(1)}
+    .lightbox-close{position:absolute;top:18px;right:18px;width:46px;height:46px;border-radius:13px;border:1px solid rgba(78,245,255,.2);background:rgba(8,18,24,.75);cursor:pointer;font-size:24px}
+
+    /* Contact */
+    .contact-shell{position:relative;overflow:hidden;padding:50px;background:radial-gradient(circle at 90% 0%,rgba(78,245,255,.1),transparent 32%),radial-gradient(circle at 10% 100%,rgba(185,255,92,.045),transparent 32%),linear-gradient(145deg,rgba(10,22,30,.82),rgba(5,12,17,.86))}
+    .contact-shell::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:linear-gradient(90deg,transparent,var(--cyan),var(--lime),transparent);animation:contactLine 4s ease-in-out infinite;transform-origin:center}
+    @keyframes contactLine{0%,100%{transform:scaleX(.25);opacity:.3}50%{transform:scaleX(1);opacity:.9}}
+    .contact-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:50px;align-items:end;position:relative;z-index:1}
+    .contact-shell h2{font-size:clamp(46px,5.5vw,78px);line-height:.9;letter-spacing:-.065em;margin:12px 0 18px}.contact-shell p{color:#849aa1;line-height:1.75;max-width:650px}
+    .contact-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:26px}
+    .contact-info{display:grid;gap:10px}
+    .contact-line{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:15px 16px;border:1px solid rgba(78,245,255,.11);border-radius:13px;background:rgba(255,255,255,.018);font-size:12px}.contact-line span{font:9px var(--mono);letter-spacing:.09em;color:#688189}.contact-line strong{font-weight:500;color:#e7f7f9;text-align:right;overflow-wrap:anywhere}
+
+    footer{padding:30px 0 50px;display:flex;justify-content:space-between;gap:20px;color:#59727b;font:9px var(--mono);letter-spacing:.08em}
+
+    .cursor-ring{position:fixed;z-index:999;pointer-events:none;width:22px;height:22px;border:1px solid rgba(78,245,255,.42);border-radius:50%;transform:translate(-50%,-50%);left:-100px;top:-100px;transition:width .2s ease,height .2s ease,border-color .2s ease,background .2s ease;mix-blend-mode:screen}
+    .cursor-ring.hot{width:42px;height:42px;border-color:rgba(185,255,92,.55);background:rgba(78,245,255,.03)}
+
+    @media(max-width:1060px){
+      .command-bar{grid-template-columns:auto 1fr auto}.identity-copy span{display:none}.nav-links a{padding:10px 8px;font-size:9px}.mini-button:not(.primary){display:none}
+      .hero-grid{grid-template-columns:1fr .72fr;gap:30px}.hero-visual{min-height:500px}.proof-row{grid-template-columns:repeat(2,1fr)}
+      .highlight-strip{grid-template-columns:1fr 1fr}.highlight:first-child{grid-column:span 2}
+      .project-card,.project-card.large,.project-card.small{grid-column:span 6}
+      .gallery-card:nth-child(n){grid-column:span 4;grid-row:span 2}.gallery-card:nth-child(1),.gallery-card:nth-child(7){grid-column:span 8;grid-row:span 3}
+    }
+
+    @media(max-width:760px){
+      .container{width:calc(100% - 28px)}
+      .command-bar{top:10px;min-height:58px;padding:7px 8px;grid-template-columns:auto 1fr;width:calc(100% - 20px);border-radius:16px}.identity-avatar{width:39px;height:39px}.identity-copy strong{font-size:13px}.nav-links{display:none}.bar-actions{justify-self:end}.mini-button.primary{display:none}.audio-control{padding-right:5px}#volumeSlider{width:64px}.volume-readout{display:none}
+      .section-rail{display:none}.cursor-ring{display:none}
+      .hero{padding:115px 0 65px;min-height:auto}.hero-grid{grid-template-columns:1fr;gap:35px}.hero h1{font-size:clamp(48px,15vw,78px)}.hero-copy{font-size:15px}.hero-visual{min-height:370px}.scene-card{inset:25px 8px 25px 8px;transform:none}.float-label.a{right:0}.float-label.b{left:0}.orbit.one{right:-30px}
+      section:not(.hero){padding:78px 0}.section-heading{grid-template-columns:1fr;gap:15px;margin-bottom:28px}.section-heading h2{font-size:clamp(38px,11vw,58px)}
+      .about-layout,.process-layout,.pricing-layout,.contact-grid{grid-template-columns:1fr}.highlight-strip{grid-template-columns:1fr}.highlight:first-child{grid-column:auto}.highlight{min-height:205px}
+      .project-grid{display:grid;grid-template-columns:1fr}.project-card,.project-card.large,.project-card.small{grid-column:auto;min-height:0}.project-card.large .project-media,.project-card.small .project-media,.project-media{height:190px}.project-open{position:static;display:inline-block;margin:16px 7px 6px}
+      .gallery-grid{grid-template-columns:repeat(2,1fr);grid-auto-rows:145px;gap:8px}.gallery-card:nth-child(n){grid-column:span 1;grid-row:span 1}.gallery-card:nth-child(1),.gallery-card:nth-child(7),.gallery-card:nth-child(11){grid-column:span 2;grid-row:span 2}
+      .contact-shell{padding:30px 22px}.contact-shell h2{font-size:clamp(42px,13vw,64px)}.contact-grid{gap:30px}
+      footer{flex-direction:column;text-align:center;align-items:center}
+    }
+
+    @media(max-width:420px){
+      .audio-control{gap:4px}#volumeSlider{width:50px}.hero-actions .cta{width:100%}.proof-row{grid-template-columns:1fr 1fr}.proof{padding:12px 10px}.proof b{font-size:17px}.scene-hud b{font-size:16px}.float-label{font-size:8px}.about-copy,.capability-panel,.manifesto,.process-list,.price-card,.policy-card{padding:24px}.skill-grid{grid-template-columns:1fr}.gallery-grid{grid-auto-rows:125px}
+    }
+
+    @media(hover:none){.cursor-ring{display:none}}
+    @media(prefers-reduced-motion:reduce){
+      *,*::before,*::after{scroll-behavior:auto!important;animation:none!important;transition:none!important}
+      .reveal{opacity:1;transform:none;filter:none}
+      #ambientCanvas{display:none}
+    }
+  </style>
+</head>
+<body>
+  <div class="scroll-progress" aria-hidden="true"><span id="scrollProgress"></span></div>
+  <canvas id="ambientCanvas" aria-hidden="true"></canvas>
+  <div class="noise" aria-hidden="true"></div>
+  <div class="cursor-ring" id="cursorRing" aria-hidden="true"></div>
+
+  <header class="command-bar" id="commandBar">
+    <a class="identity" href="#top" aria-label="vextags home">
+      <span class="identity-avatar"><img src="images/vextags-pfp.jpg" alt="vextags profile picture"></span>
+      <span class="identity-copy"><strong>vextags</strong><span>ROBLOX ENVIRONMENT BUILDER</span></span>
+    </a>
+
+    <nav class="nav-links" aria-label="Portfolio navigation">
+      <a href="#about">ABOUT</a>
+      <a href="#work">WORK</a>
+      <a href="#process">PROCESS</a>
+      <a href="#pricing">PRICING</a>
+      <a href="#gallery">GALLERY</a>
+      <a href="#contact">CONTACT</a>
+    </nav>
+
+    <div class="bar-actions">
+      <div class="audio-control" id="audioControl" title="Background music">
+        <button class="audio-toggle" id="audioToggle" type="button" aria-label="Mute or play background music">
+          <span class="audio-icon" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        </button>
+        <label class="sr-only" for="volumeSlider">Music volume</label>
+        <input id="volumeSlider" type="range" min="0" max="175" value="125" step="1" />
+        <span class="volume-readout" id="volumeReadout">125%</span>
+      </div>
+      <a class="mini-button" href="https://www.roblox.com/users/1547978021/profile" target="_blank" rel="noreferrer">ROBLOX ↗</a>
+      <a class="mini-button primary" href="https://discord.com/users/1095052143049854976" target="_blank" rel="noreferrer">HIRE ME</a>
+    </div>
+  </header>
+
+  <nav class="section-rail" aria-label="Section shortcuts">
+    <a href="#top" data-section="top" aria-label="Top"></a>
+    <a href="#about" data-section="about" aria-label="About"></a>
+    <a href="#work" data-section="work" aria-label="Work"></a>
+    <a href="#process" data-section="process" aria-label="Process"></a>
+    <a href="#pricing" data-section="pricing" aria-label="Pricing"></a>
+    <a href="#gallery" data-section="gallery" aria-label="Gallery"></a>
+    <a href="#contact" data-section="contact" aria-label="Contact"></a>
+  </nav>
+
+  <main>
+    <section class="hero" id="top">
+      <div class="container hero-grid">
+        <div class="reveal">
+          <div class="eyebrow">VEXTAGS / ROBLOX STUDIO / BLENDER</div>
+          <h1><span class="outline">I don't just build maps.</span><br><span class="glow-word">I build worlds.</span></h1>
+          <p class="hero-copy"><strong>Roblox environment builder and 3D modeller focused on production-ready worlds.</strong> I create terrain, realistic and stylized environments, low / mid / high-poly assets, studded builds and the environmental detail that makes a game feel intentional instead of empty.</p>
+          <div class="hero-actions">
+            <a class="cta primary magnetic" href="#work">EXPLORE SELECTED WORK <span>↗</span></a>
+            <a class="cta magnetic" href="#contact">START A PROJECT <span>→</span></a>
+          </div>
+          <div class="proof-row">
+            <div class="proof"><b>4+</b><span>Years Roblox Studio</span></div>
+            <div class="proof"><b>3+</b><span>Years Blender</span></div>
+            <div class="proof"><b>2+</b><span>Years Commissions</span></div>
+            <div class="proof"><b>1B+</b><span>Project Reach</span></div>
+          </div>
+        </div>
+
+        <div class="hero-visual reveal" id="heroVisual">
+          <div class="orbit one"></div>
+          <div class="orbit two"></div>
+          <div class="float-label a"><strong>STATUS</strong> · COMMISSIONS OPEN</div>
+          <div class="float-label b"><strong>FOCUS</strong> · ENVIRONMENT / WORLD DESIGN</div>
+          <div class="scene-card" id="sceneCard">
+            <img src="images/gallery1.png" alt="Featured Roblox environment by vextags" onerror="this.style.display='none'">
+            <div class="scene-hud">
+              <div><span>SELECTED ENVIRONMENT WORK</span><b>Built for gameplay first.</b></div>
+              <span class="scene-index">01 / WORLD</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="about">
+      <div class="container">
+        <div class="section-heading reveal">
+          <div><div class="eyebrow">01 / ABOUT</div><h2>Production mindset.<br>Builder's eye.</h2></div>
+          <p>I treat an environment as part of the game system: readable routes, strong silhouettes, consistent scale, intentional lighting and enough detail to make players remember the place without making performance an afterthought.</p>
+        </div>
+
+        <div class="about-layout">
+          <article class="panel about-copy reveal">
+            <p>I have <strong>4+ years of experience in Roblox Studio</strong> and <strong>3+ years in Blender</strong>, with a focus on terrain, realistic construction, low / mid / high-poly work, studded styles and stylized worldbuilding.</p>
+            <p>My workflow covers <strong>environment design, object modelling, texturing, composition and optimization</strong>. I started by experimenting across multiple Roblox development disciplines, but environment work became the area where I could contribute the most to a game's identity.</p>
+            <p>I am comfortable working from a tight reference pack or helping shape the visual direction from the start. I care about scale, player flow, atmosphere and how a map reads during actual gameplay — not just in screenshots.</p>
+            <p>I regularly work long production sessions and can adapt to demanding deadlines. I have been taking commissions for <strong>2+ years</strong>, including larger paid projects and revenue-share work.</p>
+          </article>
+
+          <aside class="panel capability-panel reveal">
+            <div>
+              <div class="capability-title">CORE CAPABILITIES</div>
+              <div class="skill-grid" style="margin-top:13px">
+                <div class="skill">Terrain Building</div><div class="skill">Environment Design</div>
+                <div class="skill">Realistic Builds</div><div class="skill">Stylized Builds</div>
+                <div class="skill">Low / Mid Poly</div><div class="skill">High Poly</div>
+                <div class="skill">Studded Builds</div><div class="skill">Blender Modelling</div>
+                <div class="skill">Object Texturing</div><div class="skill">Map Composition</div>
+              </div>
+            </div>
+            <div>
+              <div class="capability-title">EXPERIENCE</div>
+              <div class="timeline-mini" style="margin-top:13px">
+                <div class="timeline-item"><b>4+ YEARS</b><span>Roblox Studio — map building, iteration and production environments.</span></div>
+                <div class="timeline-item"><b>3+ YEARS</b><span>Blender — props, modular assets and supporting game-ready models.</span></div>
+                <div class="timeline-item"><b>2+ YEARS</b><span>Commission work — client feedback, deadlines and long-term collaboration.</span></div>
+              </div>
+            </div>
+          </aside>
+        </div>
+
+        <div class="highlight-strip">
+          <article class="panel highlight reveal" style="--accentGlow:rgba(78,245,255,.14)">
+            <span class="highlight-num">FEATURED CREDIT / 01</span><span class="metric-tag">7.7M+ VISITS</span>
+            <h3>My Working Brainrots</h3>
+            <p>Lead Builder contribution on a public Roblox experience, focused on environment production and the visual language of the playable space.</p>
+          </article>
+          <article class="panel highlight reveal" style="--accentGlow:rgba(185,255,92,.11)">
+            <span class="highlight-num">FEATURED CREDIT / 02</span><span class="metric-tag">100K+ PEAK CCU</span>
+            <h3>Racket Rivals</h3>
+            <p>Commissioned builder and 3D modeller work on a front-page Roblox title.</p>
+          </article>
+          <article class="panel highlight reveal" style="--accentGlow:rgba(255,195,90,.10)">
+            <span class="highlight-num">FEATURED CREDIT / 03</span><span class="metric-tag">80K+ RELEASE CCU</span>
+            <h3>New Moon</h3>
+            <p>Builder contribution on a project with a strong public launch milestone.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="work">
+      <div class="container">
+        <div class="section-heading reveal">
+          <div><div class="eyebrow">02 / SELECTED WORK</div><h2>Worlds built around<br>the game.</h2></div>
+          <p>Selected public, commissioned and development work. The focus changes project to project, but the standard stays the same: strong visual direction, readable gameplay space and efficient production.</p>
+        </div>
+
+        <div class="project-grid">
+          <article class="panel project-card large reveal" data-tilt>
+            <div class="project-media"><span class="project-status">PUBLIC · FEATURED</span><img data-game-thumb="racket" alt="Racket Rivals thumbnail"></div>
+            <div class="project-body"><div class="project-kicker">BUILDER + 3D MODELLER · COMMISSION</div><h3>Racket Rivals</h3><p>Production environment and modelling contribution for a large front-page racket game, with emphasis on clean presentation and game-ready spaces.</p><div class="project-meta"><span>PUBLIC</span><span>COMMISSION</span><span>FRONT PAGE</span><span>100K+ PEAK CCU</span></div></div>
+            <a class="project-open" target="_blank" rel="noreferrer" href="https://www.roblox.com/games/90906407195271/Racket-Rivals">OPEN ON ROBLOX ↗</a>
+          </article>
+
+          <article class="panel project-card small reveal" data-tilt>
+            <div class="project-media"><span class="project-status">DEVELOPMENT</span><img data-game-thumb="dodgebrawl" alt="Dodgebrawl thumbnail"></div>
+            <div class="project-body"><div class="project-kicker">BUILDER + 3D MODELLER</div><h3>Dodgebrawl</h3><p>Dodgeball environment work designed around fast readability, arena presentation and production efficiency.</p><div class="project-meta"><span>COMMISSION</span><span>IN DEVELOPMENT</span></div></div>
+          </article>
+
+          <article class="panel project-card small reveal" data-tilt>
+            <div class="project-media"><span class="project-status">DEVELOPMENT</span><img data-game-thumb="dodgebrawlRivals" alt="Dodgebrawl Rivals thumbnail"></div>
+            <div class="project-body"><div class="project-kicker">BUILDER + 3D MODELLER</div><h3>Dodgebrawl Rivals</h3><p>Commissioned map and environment work for a competitive dodgeball project currently in development.</p><div class="project-meta"><span>COMMISSION</span><span>IN DEVELOPMENT</span></div></div>
+          </article>
+
+          <article class="panel project-card large reveal" data-tilt>
+            <div class="project-media"><span class="project-status">CLOSED COMMUNITY</span><img data-game-thumb="bladefall" alt="BladeFall thumbnail"></div>
+            <div class="project-body"><div class="project-kicker">LONG-TERM BUILDER + 3D MODELLER</div><h3>BladeFall</h3><p>Long-term environment and modelling involvement on a large closed-community project, supporting a broader world rather than isolated one-off assets.</p><div class="project-meta"><span>PRIVATE</span><span>LONG TERM</span><span>COMMISSION</span></div></div>
+          </article>
+
+          <article class="panel project-card large reveal" data-tilt>
+            <div class="project-media"><span class="project-status">DEVELOPMENT · LONG TERM</span><img data-game-thumb="bukatsu" alt="Bukatsu thumbnail"></div>
+            <div class="project-body"><div class="project-kicker">BUILDER + 3D MODELLER</div><h3>Bukatsu</h3><p>Large Japanese high-school experience in development, with long-term work across environment design, map construction and supporting 3D assets.</p><div class="project-meta"><span>JAPANESE HIGH SCHOOL</span><span>LONG TERM</span><span>COMMISSION</span></div></div>
+          </article>
+
+          <article class="panel project-card small reveal" data-tilt>
+            <div class="project-media"><span class="project-status">PUBLIC</span><img data-game-thumb="deep" alt="DEEP thumbnail"></div>
+            <div class="project-body"><div class="project-kicker">BUILDER + 3D MODELLER</div><h3>DEEP</h3><p>Environment contribution for a public Roblox swimming experience.</p><div class="project-meta"><span>PUBLIC</span><span>COMMISSION</span></div></div>
+            <a class="project-open" href="https://www.roblox.com/discover/?Keyword=DEEP" target="_blank" rel="noreferrer">OPEN SEARCH ↗</a>
+          </article>
+
+          <article class="panel project-card small reveal" data-tilt>
+            <div class="project-media"><span class="project-status">PRIVATE</span><img data-game-thumb="fruitPirates" alt="Don't Wake the Fruit Pirates thumbnail"></div>
+            <div class="project-body"><div class="project-kicker">BUILDER + 3D MODELLER</div><h3>Don't Wake the Fruit Pirates</h3><p>Commissioned environment work for a project that is currently private.</p><div class="project-meta"><span>PRIVATE</span><span>COMMISSION</span></div></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="process">
+      <div class="container">
+        <div class="section-heading reveal">
+          <div><div class="eyebrow">03 / PROCESS</div><h2>Fast iteration.<br>Intentional decisions.</h2></div>
+          <p>A straightforward workflow built for real development: align the visual target early, block the map around gameplay, refine in layers, then optimize before handoff.</p>
+        </div>
+
+        <div class="process-layout">
+          <article class="panel manifesto reveal"><div><div class="quote-mark">“</div><h3>A good map is not decoration. It is part of the game.</h3></div><small>VEXTAGS · ENVIRONMENT DESIGN PRINCIPLE</small></article>
+          <article class="panel process-list reveal">
+            <div class="process-row"><div class="process-num">01</div><div><h4>Brief + reference lock</h4><p>Define style, scale, player flow, target platforms, references and exact deliverables.</p></div><div class="process-arrow">→</div></div>
+            <div class="process-row"><div class="process-num">02</div><div><h4>Blockout + gameplay read</h4><p>Establish proportions and navigation before spending time on surface detail.</p></div><div class="process-arrow">→</div></div>
+            <div class="process-row"><div class="process-num">03</div><div><h4>Production pass</h4><p>Build the environment, model supporting assets and reinforce the visual hierarchy.</p></div><div class="process-arrow">→</div></div>
+            <div class="process-row"><div class="process-num">04</div><div><h4>Polish + optimization</h4><p>Lighting, detail, cleanup and performance-minded adjustments before delivery.</p></div><div class="process-arrow">→</div></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="pricing">
+      <div class="container">
+        <div class="section-heading reveal">
+          <div><div class="eyebrow">04 / PRICING</div><h2>Clear scope.<br>Clear terms.</h2></div>
+          <p>Pricing depends on complexity, map scale, art direction and deadline. Larger or long-term projects are quoted after the scope is understood.</p>
+        </div>
+        <div class="pricing-layout">
+          <article class="panel price-card reveal">
+            <div class="price-label">STARTING RANGE</div>
+            <div class="price">$50<sup>+</sup></div>
+            <div class="price-sub">OR 5,000 ROBUX+ · FINAL RATE DEPENDS ON SCOPE</div>
+            <div class="payment-lines">
+              <div><span>PAYPAL</span><strong>syedm.ali1@gmail.com</strong></div>
+              <div><span>ROBUX</span><strong>DEVEX CALCULATED</strong></div>
+              <div><span>PROJECT TYPE</span><strong>COMMISSION / LONG-TERM</strong></div>
+            </div>
+          </article>
+          <article class="panel policy-card reveal">
+            <div class="eyebrow">WORKING TERMS</div>
+            <h3>Built for serious projects.</h3>
+            <p>Before work begins, I prefer a clear brief, references, expected deliverables and a realistic deadline. This keeps revisions focused and lets me spend more time on the actual environment.</p>
+            <p class="policy-accent"><strong>Robux prices are calculated through DevEx.</strong> Extremely small projects may not be a fit, while larger or long-term work can be scoped separately.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="gallery">
+      <div class="container">
+        <div class="section-heading reveal">
+          <div><div class="eyebrow">05 / GALLERY</div><h2>Environment work,<br>without the carousel.</h2></div>
+          <p>A static bento gallery so every build has room to breathe. Click any image to inspect it at a larger size.</p>
+        </div>
+        <div class="gallery-grid reveal" id="galleryGrid"></div>
+      </div>
+    </section>
+
+    <section id="contact">
+      <div class="container">
+        <article class="panel contact-shell reveal">
+          <div class="contact-grid">
+            <div>
+              <div class="eyebrow">06 / CONTACT</div>
+              <h2>Need a world that<br>feels finished?</h2>
+              <p>If you need a Roblox builder for a commission, a larger environment, long-term development support or Blender assets that fit an existing art direction, send me the scope and references.</p>
+              <div class="contact-actions">
+                <a class="cta primary magnetic" href="https://discord.com/users/1095052143049854976" target="_blank" rel="noreferrer">MESSAGE ON DISCORD ↗</a>
+                <a class="cta magnetic" href="https://www.roblox.com/users/1547978021/profile" target="_blank" rel="noreferrer">VIEW ROBLOX ↗</a>
+              </div>
+            </div>
+            <div class="contact-info">
+              <div class="contact-line"><span>DISCORD</span><strong>vextags</strong></div>
+              <div class="contact-line"><span>ROBLOX</span><strong>vextags</strong></div>
+              <div class="contact-line"><span>EMAIL</span><strong>vxvthegreat@proton.me</strong></div>
+              <div class="contact-line"><span>PAYPAL</span><strong>syedm.ali1@gmail.com</strong></div>
+            </div>
+          </div>
+        </article>
+        <footer><span>© <span id="year"></span> VEXTAGS · ROBLOX / BLENDER</span><span>ENVIRONMENT DESIGN · WORLD BUILDING · 3D MODELLING</span></footer>
+      </div>
+    </section>
+  </main>
+
+  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Gallery image preview">
+    <button class="lightbox-close" id="lightboxClose" type="button" aria-label="Close image preview">×</button>
+    <img id="lightboxImage" src="" alt="Expanded portfolio gallery image">
+  </div>
+
+  <audio id="vexBgMusic" src="audio/vexsong.mp3" loop preload="auto" autoplay></audio>
+
+  <script>
+    const GAME_THUMBS = {
+      racket: "https://tr.rbxcdn.com/180DAY-0614c9b9c19837923262618e825d92cc/768/432/Image/Webp/noFilter",
+      dodgebrawl: "images/dodgebrawl.png",
+      dodgebrawlRivals: "https://yt3.googleusercontent.com/uow5yXxL_ftLFX0vkHUTiiBnx6cy9NXAep8SlaHyykVZQEL14FyCwlG_6_puCh8u_nt0O1zT=s160-c-k-c0x00ffffff-no-rj",
+      bladefall: "https://tr.rbxcdn.com/180DAY-07541b9a30bd2c184f3e5294f46c4137/150/150/Image/Webp/noFilter",
+      bukatsu: "images/BukatsuThumb.png",
+      deep: "https://tr.rbxcdn.com/180DAY-87e2640382a11348b6bcb5433bb22756/768/432/Image/Webp/noFilter",
+      fruitPirates: "https://tr.rbxcdn.com/180DAY-329b9a11fcfc6f9b84f9bc3593f379d9/768/432/Image/Png/noFilter"
+    };
+
+    const GALLERY_IMAGES = [
+      "images/gallery1.png","images/gallery2.png","images/gallery3.png","images/gallery4.png",
+      "images/gallery5.png","images/gallery6.png","images/gallery7.png","images/gallery8.png",
+      "images/gallery9.png","images/gallery10.png","images/gallery11.png"
+    ];
+
+    const fallbackImage = "images/vextags-pfp.jpg";
+    document.getElementById("year").textContent = new Date().getFullYear();
+
+    // Pointer glow + custom cursor.
+    const cursorRing = document.getElementById("cursorRing");
+    window.addEventListener("pointermove", (e) => {
+      document.documentElement.style.setProperty("--mx", e.clientX + "px");
+      document.documentElement.style.setProperty("--my", e.clientY + "px");
+      if (cursorRing) { cursorRing.style.left = e.clientX + "px"; cursorRing.style.top = e.clientY + "px"; }
+    }, {passive:true});
+    document.querySelectorAll("a,button,input,.gallery-card,[data-tilt]").forEach(el => {
+      el.addEventListener("pointerenter", () => cursorRing?.classList.add("hot"));
+      el.addEventListener("pointerleave", () => cursorRing?.classList.remove("hot"));
+    });
+
+    // Ambient particle field. Intentionally light-weight and disabled for reduced motion.
+    const canvas = document.getElementById("ambientCanvas");
+    const ctx = canvas.getContext("2d");
+    const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let particles = [], rafId = 0;
+    function resizeCanvas(){
+      const dpr = Math.min(devicePixelRatio || 1, 1.5);
+      canvas.width = Math.floor(innerWidth * dpr); canvas.height = Math.floor(innerHeight * dpr);
+      canvas.style.width = innerWidth + "px"; canvas.style.height = innerHeight + "px";
+      ctx.setTransform(dpr,0,0,dpr,0,0);
+      const count = innerWidth < 760 ? 18 : 42;
+      particles = Array.from({length:count},()=>({x:Math.random()*innerWidth,y:Math.random()*innerHeight,r:Math.random()*1.2+.25,vx:(Math.random()-.5)*.08,vy:-(Math.random()*.13+.03),a:Math.random()*.45+.08}));
+    }
+    function drawParticles(){
+      ctx.clearRect(0,0,innerWidth,innerHeight);
+      for(const p of particles){
+        p.x += p.vx; p.y += p.vy;
+        if(p.y < -8){p.y=innerHeight+8;p.x=Math.random()*innerWidth}
+        if(p.x < -8)p.x=innerWidth+8;if(p.x>innerWidth+8)p.x=-8;
+        ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=`rgba(78,245,255,${p.a})`;ctx.fill();
+      }
+      rafId=requestAnimationFrame(drawParticles);
+    }
+    if(!reducedMotion){resizeCanvas();drawParticles();window.addEventListener("resize",resizeCanvas,{passive:true})}
+
+    // Reveal sections with a stagger feel.
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if(entry.isIntersecting){
+          entry.target.classList.add("show");
+          revealObserver.unobserve(entry.target);
+        }
+      });
+    }, {threshold:.1});
+    document.querySelectorAll(".reveal").forEach((el,i)=>{el.style.transitionDelay = Math.min(i%4,3)*55 + "ms";revealObserver.observe(el)});
+
+    // Scroll progress + top bar state + active navigation.
+    const progress = document.getElementById("scrollProgress");
+    const commandBar = document.getElementById("commandBar");
+    const navLinks = [...document.querySelectorAll(".nav-links a")];
+    const railLinks = [...document.querySelectorAll(".section-rail a")];
+    const tracked = ["top","about","work","process","pricing","gallery","contact"];
+    function onScroll(){
+      const max = document.documentElement.scrollHeight - innerHeight;
+      const ratio = max > 0 ? scrollY/max : 0;
+      progress.style.width = (ratio*100) + "%";
+      commandBar.classList.toggle("scrolled", scrollY > 35);
+    }
+    onScroll(); window.addEventListener("scroll",onScroll,{passive:true});
+    const sectionObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if(!entry.isIntersecting) return;
+        const id = entry.target.id || "top";
+        navLinks.forEach(a=>a.classList.toggle("active",a.getAttribute("href")==="#"+id));
+        railLinks.forEach(a=>a.classList.toggle("active",a.dataset.section===id));
+      });
+    },{rootMargin:"-36% 0px -54% 0px",threshold:0});
+    tracked.forEach(id=>{const el=document.getElementById(id);if(el)sectionObserver.observe(el)});
+
+    // Project thumbnails, with clean local fallback.
+    document.querySelectorAll("[data-game-thumb]").forEach(img=>{
+      img.src = GAME_THUMBS[img.dataset.gameThumb] || fallbackImage;
+      img.onerror = () => { img.onerror=null; img.src=fallbackImage; };
+    });
+
+    // Subtle project tilt on desktop.
+    document.querySelectorAll("[data-tilt]").forEach(card=>{
+      card.addEventListener("pointermove",e=>{
+        if(innerWidth<780 || reducedMotion) return;
+        const r=card.getBoundingClientRect();
+        const x=(e.clientX-r.left)/r.width-.5; const y=(e.clientY-r.top)/r.height-.5;
+        card.style.transform=`perspective(900px) translateY(-5px) rotateX(${(-y*2.3).toFixed(2)}deg) rotateY(${(x*2.3).toFixed(2)}deg)`;
+      });
+      card.addEventListener("pointerleave",()=>card.style.transform="");
+    });
+
+    // Hero scene follows pointer very slightly.
+    const sceneCard = document.getElementById("sceneCard");
+    const heroVisual = document.getElementById("heroVisual");
+    heroVisual?.addEventListener("pointermove",e=>{
+      if(innerWidth<780 || reducedMotion) return;
+      const r=heroVisual.getBoundingClientRect();
+      const x=(e.clientX-r.left)/r.width-.5, y=(e.clientY-r.top)/r.height-.5;
+      sceneCard.style.transform=`rotateY(${(-5+x*5).toFixed(2)}deg) rotateX(${(2-y*4).toFixed(2)}deg) translateY(${(-y*4).toFixed(2)}px)`;
+    });
+    heroVisual?.addEventListener("pointerleave",()=>sceneCard.style.transform="");
+
+    // Static gallery + lightbox.
+    const galleryGrid = document.getElementById("galleryGrid");
+    const lightbox = document.getElementById("lightbox");
+    const lightboxImage = document.getElementById("lightboxImage");
+    const closeLightbox = () => { lightbox.classList.remove("open"); document.body.style.overflow=""; };
+    GALLERY_IMAGES.forEach((src,i)=>{
+      const card=document.createElement("button");
+      card.type="button";card.className="gallery-card";card.setAttribute("aria-label",`Open portfolio image ${i+1}`);
+      const fallback=document.createElement("span");fallback.className="gallery-fallback";fallback.textContent="PORTFOLIO IMAGE";
+      const img=document.createElement("img");img.src=src;img.alt=`Roblox environment portfolio work ${i+1}`;img.loading=i<4?"eager":"lazy";
+      img.onerror=()=>{img.style.display="none"};
+      card.append(fallback,img);
+      card.addEventListener("click",()=>{ if(img.style.display==="none") return; lightboxImage.src=src; lightboxImage.alt=img.alt; lightbox.classList.add("open"); document.body.style.overflow="hidden"; });
+      galleryGrid.appendChild(card);
+    });
+    document.getElementById("lightboxClose").addEventListener("click",closeLightbox);
+    lightbox.addEventListener("click",e=>{if(e.target===lightbox)closeLightbox()});
+    document.addEventListener("keydown",e=>{if(e.key==="Escape")closeLightbox()});
+
+    // Magnetic buttons, desktop only.
+    document.querySelectorAll(".magnetic").forEach(el=>{
+      el.addEventListener("pointermove",e=>{
+        if(innerWidth<780 || reducedMotion) return;
+        const r=el.getBoundingClientRect();const x=e.clientX-r.left-r.width/2;const y=e.clientY-r.top-r.height/2;
+        el.style.transform=`translate(${x*.08}px,${y*.08}px) translateY(-2px)`;
+      });
+      el.addEventListener("pointerleave",()=>el.style.transform="");
+    });
+
+    // Music: high default output + adjustable gain up to 175%.
+    const audio = document.getElementById("vexBgMusic");
+    const audioToggle = document.getElementById("audioToggle");
+    const audioControl = document.getElementById("audioControl");
+    const volumeSlider = document.getElementById("volumeSlider");
+    const volumeReadout = document.getElementById("volumeReadout");
+    let audioContext=null, sourceNode=null, gainNode=null, graphReady=false, muted=false, lastVolume=125;
+
+    function ensureAudioGraph(){
+      if(graphReady || !(window.AudioContext || window.webkitAudioContext)) return;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      audioContext = new AC();
+      sourceNode = audioContext.createMediaElementSource(audio);
+      gainNode = audioContext.createGain();
+      sourceNode.connect(gainNode).connect(audioContext.destination);
+      graphReady=true;
+      gainNode.gain.value=Number(volumeSlider.value)/100;
+    }
+    async function startMusic(){
+      try{
+        ensureAudioGraph();
+        if(audioContext?.state==="suspended") await audioContext.resume();
+        audio.volume=1;
+        await audio.play();
+        muted=false; audioControl.classList.remove("paused");
+      }catch(_){ audioControl.classList.add("paused"); }
+    }
+    function setVolume(value){
+      const v=Math.max(0,Math.min(175,Number(value)||0));
+      volumeSlider.value=v; lastVolume=v || lastVolume;
+      volumeReadout.textContent=Math.round(v)+"%";
+      volumeSlider.style.setProperty("--vol",(v/1.75)+"%");
+      if(graphReady) gainNode.gain.value=v/100;
+      else audio.volume=Math.min(1,v/100);
+      muted=v===0; audioControl.classList.toggle("paused", muted || audio.paused);
+    }
+    setVolume(125);
+    volumeSlider.addEventListener("input",()=>{setVolume(volumeSlider.value);startMusic()});
+    audioToggle.addEventListener("click",async()=>{
+      if(audio.paused){setVolume(lastVolume || 125);await startMusic();return;}
+      if(muted || Number(volumeSlider.value)===0){setVolume(lastVolume || 125);muted=false;audioControl.classList.remove("paused");}
+      else{lastVolume=Number(volumeSlider.value)||125;setVolume(0);muted=true;audioControl.classList.add("paused");}
+    });
+    audio.addEventListener("play",()=>audioControl.classList.remove("paused"));
+    audio.addEventListener("pause",()=>audioControl.classList.add("paused"));
+
+    // Browsers often require a gesture before audible autoplay; first interaction starts it.
+    startMusic();
+    ["pointerdown","keydown","touchstart"].forEach(type=>document.addEventListener(type,startMusic,{once:true,passive:true}));
+  </script>
+</body>
+</html>
